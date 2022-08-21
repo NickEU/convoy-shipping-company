@@ -1,4 +1,5 @@
 import pandas as pd
+from misc import was_were, s_if_plural
 
 
 def process_excel_input(excel_filename, save_to):
@@ -8,7 +9,6 @@ def process_excel_input(excel_filename, save_to):
 
 
 def print_excel_import_result(df_input, csv_filename):
-    rows_imported = df_input.shape[0]
-    lines_line = '' if rows_imported == 1 else 's'
-    was_were = 'was' if rows_imported == 1 else 'were'
-    print(f"{rows_imported} line{lines_line} {was_were} imported to {csv_filename}")
+    row_cnt = df_input.shape[0]
+    print(f"{row_cnt} line{s_if_plural(row_cnt)}"
+          f" {was_were(row_cnt)} imported to {csv_filename}")
