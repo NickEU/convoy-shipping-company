@@ -7,7 +7,7 @@ class DatabaseSaveResult:
         self.records_inserted = records_inserted
 
 
-def save_to_database(db_filename, table_name, data_ready_for_db):
+def save_to_sqlite(db_filename, table_name, data_ready_for_db):
     conn = sqlite3.connect(db_filename)
     cursor_name = conn.cursor()
     columns = data_ready_for_db.columns
