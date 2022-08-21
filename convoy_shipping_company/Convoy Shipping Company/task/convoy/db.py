@@ -1,4 +1,5 @@
 import sqlite3
+import json
 
 
 class DatabaseSaveResult:
@@ -7,7 +8,7 @@ class DatabaseSaveResult:
         self.records_inserted = records_inserted
 
 
-def save_to_database(db_filename, table_name, data_ready_for_db):
+def save_to_sqlite(db_filename, table_name, data_ready_for_db):
     conn = sqlite3.connect(db_filename)
     cursor_name = conn.cursor()
     columns = data_ready_for_db.columns
@@ -34,3 +35,24 @@ def save_to_database(db_filename, table_name, data_ready_for_db):
     conn.close()
 
     return DatabaseSaveResult(records_inserted)
+
+
+class SelectQueryResult:
+    def __init__(self, rows_returned, json_result):
+        self.rows_returned = rows_returned
+        self.json_result = json_result
+
+
+def get_rows_from_table(db_filename, table_name):
+    conn = sqlite3.connect(db_filename)
+    conn.row_factory = sqlite3.Row  # This enables column access by name: row['column_name']
+    db = conn.cursor()
+
+    rows = db.execute(f'''
+    SELECT * from {table_name}
+    ''').fetchall()
+
+    conn.commit()
+    conn.close()
+
+    return SelectQueryResult(len(rows), json.dumps([dict(ix) for ix in rows]))
