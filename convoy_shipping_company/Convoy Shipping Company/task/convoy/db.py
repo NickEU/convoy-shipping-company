@@ -1,4 +1,5 @@
 import sqlite3
+from score import calculate_score
 
 
 class DatabaseSaveResult:
@@ -17,6 +18,7 @@ def save_to_sqlite(db_filename, table_name, data_ready_for_db):
     cursor_name.execute(sql_drop_table_if_exists)
 
     sql_query_create_table = f"""CREATE TABLE {table_name}({sql_list_of_columns},
+        score INT NOT NULL,
         PRIMARY KEY ({columns[0]})
     );"""
 
@@ -26,7 +28,8 @@ def save_to_sqlite(db_filename, table_name, data_ready_for_db):
         column_names = ",".join([x for x in row.index])
         values = ",".join([str(x) for x in row.values])
         # you cannot appreciate the beauty of SQLAlchemy and df.to_sql() without experiencing this pain
-        sql_query_insert_row = f"""INSERT INTO {table_name} ({column_names}) VALUES ({values});"""
+        sql_query_insert_row = f"""INSERT INTO {table_name} ({column_names}, score) 
+        VALUES ({values}, {calculate_score(row)});"""
         result = cursor_name.execute(sql_query_insert_row)
         records_inserted += result.rowcount
 

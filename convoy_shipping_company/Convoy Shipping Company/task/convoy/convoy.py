@@ -64,6 +64,7 @@ def save_to_xml(rows, save_to_filename, table_name):
 
 
 def main_menu():
+    # filename_user_input = "data_final_xlsx.xlsx"
     filename_user_input = input('Input file name\n')
     filename_csv_target = get_filename_without_ext(filename_user_input) + '.csv'
 
