@@ -1,9 +1,11 @@
 import pandas as pd
 from excel import process_excel_input
 from int_extractor import extract_int
-from misc import announce_cleaning_result, announce_db_insert_result, announce_json_save_result
+from misc import announce_cleaning_result, announce_db_insert_result, announce_file_save_result
 from db import save_to_sqlite
 import json_local
+from db import get_rows_from_table
+import xml_local
 
 
 def get_filename_without_ext(filename):
@@ -51,11 +53,14 @@ def process_user_input(filename_user_input, filename_csv_target):
         raise SystemExit(0)
 
 
-def save_to_json(filename_user_input, db_filename, table_name):
-    filename_user_input = filename_user_input.replace('[CHECKED].csv', '.csv')
-    json_filename = get_filename_without_ext(filename_user_input) + '.json'
-    vehicles_saved = json_local.save_to_json(db_filename, table_name, json_filename)
-    announce_json_save_result(vehicles_saved, json_filename)
+def save_to_json(rows, save_to_filename, table_name):
+    vehicles_saved = json_local.save_to_json(rows, save_to_filename, table_name)
+    announce_file_save_result(vehicles_saved, save_to_filename)
+
+
+def save_to_xml(rows, save_to_filename, table_name):
+    vehicles_saved = xml_local.save_to_xml(rows, save_to_filename, table_name, 'vehicle')
+    announce_file_save_result(vehicles_saved, save_to_filename)
 
 
 def main_menu():
@@ -75,8 +80,11 @@ def main_menu():
     else:
         db_filename = filename_user_input
 
-    # If we got here the db file is guaranteed to exist, can export it to JSON
-    save_to_json(filename_user_input, db_filename, table_name)
+    # If we got here the db file is guaranteed to exist, can export it to JSON/XML
+    rows = get_rows_from_table(db_filename, table_name)
+    filename_user_input = filename_user_input.replace('[CHECKED].csv', '.csv')
+    save_to_json(rows, get_filename_without_ext(filename_user_input) + '.json', table_name)
+    save_to_xml(rows, get_filename_without_ext(filename_user_input) + '.xml', table_name)
 
 
 main_menu()

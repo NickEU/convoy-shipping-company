@@ -1,11 +1,11 @@
 from hstest.stage_test import *
 from hstest.test_case import TestCase
 from os import path
-import os
 import shutil
 import re
 import sqlite3
 import json
+import os
 import hashlib
 import requests
 import zipfile
@@ -28,7 +28,7 @@ class EasyRiderStage1(StageTest):
             for line in file:
                 line = line.strip().split(",")
                 convoy.execute(f"INSERT INTO convoy({db_convoy[0]},{db_convoy[1]},{db_convoy[2]},{db_convoy[3]}) "
-                              f"VALUES({line[0]},{line[1]},{line[2]},{line[3]})")
+                               f"VALUES({line[0]},{line[1]},{line[2]},{line[3]})")
             conn.commit()
             conn.close()
 
@@ -42,7 +42,7 @@ class EasyRiderStage1(StageTest):
                     raise WrongAnswer(f"Can't delete the database file: {name_del}. Looks like database connection wasn't closed or database is open in external program.")
 
     def generate(self) -> List[TestCase]:
-        check_test_files("https://stepik.org/media/attachments/lesson/461165/stage4_files.zip")
+        check_test_files("https://stepik.org/media/attachments/lesson/461165/stage5_files.zip")
         self.remove_s3db_files()
         self.s3db_generate("data_one_chk[CHECKED].csv")
         self.s3db_generate("data_big_chk[CHECKED].csv")
@@ -56,6 +56,12 @@ class EasyRiderStage1(StageTest):
                 TestCase(stdin=[self.prepare_file], attach=("data_one_sql.s3db", 1, None, None, "cell", 488, "record", "vehicle")),
                 TestCase(stdin=[self.prepare_file], attach=("data_big_sql.s3db", 10, None, None, "cell", 5961, "record", "vehicle")),
         ]
+
+#    def checking_files(self):
+#        for file in self.files_to_check:
+#            file = os.path.join("test", file)
+#            if all([not file.endswith(".s3db"), not path.exists(file)]):
+#                raise WrongAnswer(f"There is no {file} file in test repository. Please restore the file or restart the lesson.")
 
     def after_all_tests(self):
         for file in set(self.files_to_delete):
@@ -89,7 +95,7 @@ class EasyRiderStage1(StageTest):
     def check_output(quantity, nr, text, file_name):
         prefix = f"{quantity} {nr}{' was' if quantity == 1 else 's were'}"
         if not text.startswith(prefix):
-            return f"Output don't starts with sentence '{prefix}'"
+            return f"Output don't starts with sentence '{prefix}' in output '{text}'"
         if file_name not in text:
             return f"There is no {file_name} name in output '{text}'."
         return False
@@ -115,6 +121,7 @@ class EasyRiderStage1(StageTest):
     def checking_database(file_name, nr_lines, number):
         conn = sqlite3.connect(file_name)
         convoy = conn.cursor()
+
         #  checking if table exists
         try:
             lines = convoy.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='convoy';").fetchall()
@@ -189,6 +196,45 @@ class EasyRiderStage1(StageTest):
             return f"There is no 'convoy' key in {file_name}."
         except TypeError:
             return f"There is different data type in JSON file than dictionary."
+        return False
+
+    @staticmethod
+    def checking_xml(file_name, lines):
+        tags = {'vehicle_id': lines, 'engine_capacity': lines, 'fuel_consumption': lines, 'maximum_load': lines}
+        tags_no_data = {'convoy': 1, 'vehicle': lines}
+        with open(file_name, "r") as xml_file:
+            from_xml = xml_file.readlines()
+        from_xml = "".join(x.strip("\n") for x in from_xml)
+
+        #  checking number of tags with digits between
+        for tag in tags:
+            f_tag, l_tag = rf"<{tag}>", rf"</{tag}>"
+            n_tags = len(re.findall(rf"({f_tag})[\d]+({l_tag})", from_xml))
+            if n_tags != tags[tag]:
+                return rf"There is wrong number of {f_tag} tags in {file_name}. Expected {tags[tag]}," + \
+                       f" found {n_tags} or there is something more then digits between those tags."
+
+        #  checking high-level tag, and tags without digits between
+        for tag in tags_no_data:
+            for one_tag in (rf"<{tag}>", rf"</{tag}>"):
+                len_t = len(re.findall(rf"({one_tag})", from_xml))
+                if len_t != tags_no_data[tag]:
+                    return rf"Wrong number of {one_tag} tags in {file_name}. Expected {tags_no_data[tag]}, found {len_t}."
+
+        #  checking structure of file
+        template = r"^[\s]*(<convoy>)"
+        for x in range(lines):
+            template += r"[\s]*(<vehicle>)"
+            template += r"[\s]*(<vehicle_id>)[\d]+(</vehicle_id>)"
+            template += r"[\s]*(<engine_capacity>)[\d]+(</engine_capacity>)"
+            template += r"[\s]*(<fuel_consumption>)[\d]+(</fuel_consumption>)"
+            template += r"[\s]*(<maximum_load>)[\d]+(</maximum_load>)"
+            template += r"[\s]*(</vehicle>)"
+        template += r"[\s]*(</convoy>)[\s]*$"
+        if not re.match(template, from_xml):
+            return f"There is wrong structure of xml file. Look at the example in the stage description."
+
+        return False
 
     def check(self, reply: str, result) -> CheckResult:
         if "input" not in reply.lower():
@@ -197,6 +243,7 @@ class EasyRiderStage1(StageTest):
         reply.pop(0)
         if len(reply) == 0:
             return CheckResult.wrong(f"There is not enough lines in the output")
+
         file_name = result[0].split(".")
 
         #  => xlsx
@@ -267,6 +314,22 @@ class EasyRiderStage1(StageTest):
             return CheckResult.wrong(test)
 
         test = self.check_output(result[1], result[7], reply[0], f'{file_name[0]}.json')
+        if test:
+            return CheckResult.wrong(test)
+
+        reply.pop(0)
+        if len(reply) == 0:
+            return CheckResult.wrong(f"There is not enough lines in the output")
+
+        test = self.file_exist(f'{file_name[0]}.xml')
+        if test:
+            return CheckResult.wrong(test)
+
+        test = self.checking_xml(f'{file_name[0]}.xml', result[1])
+        if test:
+            return CheckResult.wrong(test)
+
+        test = self.check_output(result[1], result[7], reply[0], f'{file_name[0]}.xml')
         if test:
             return CheckResult.wrong(test)
 

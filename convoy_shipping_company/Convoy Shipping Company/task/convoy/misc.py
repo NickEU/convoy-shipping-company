@@ -7,8 +7,8 @@ def announce_db_insert_result(count, db_name):
           f'{was_were(count)} inserted into {db_name}')
 
 
-def announce_json_save_result(count, json_filename):
-    print(f'{count} vehicle{s_if_plural(count)} {was_were(count)} saved into {json_filename}')
+def announce_file_save_result(count, filename):
+    print(f'{count} vehicle{s_if_plural(count)} {was_were(count)} saved into {filename}')
 
 
 def was_were(num):
