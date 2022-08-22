@@ -1,9 +1,9 @@
-from db import get_rows_from_table
+import json
 
 
-def save_to_json(db_filename, table_name, json_filename):
-    result = get_rows_from_table(db_filename, table_name)
-    formatted_json_str = f'{{"{table_name}" : {result.json_result}}}'
+def save_to_json(rows, json_filename, table_name):
+    json_data = json.dumps([dict(ix) for ix in rows])
+    formatted_json_str = f'{{"{table_name}" : {json_data}}}'
     with open(json_filename, "w") as file:
         file.write(formatted_json_str)
-    return result.rows_returned
+    return len(rows)
